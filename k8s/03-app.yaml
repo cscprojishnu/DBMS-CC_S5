@@ -1,0 +1,107 @@
+# =========================================================================
+# Kubernetes Manifests: Web Application Deployment, Service, Ingress & HPA
+# Cloud Computing Unit 3: Container Orchestration & Horizontal Scaling
+# =========================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: warehouse-web-deployment
+  namespace: smart-warehouse
+  labels:
+    app: warehouse-web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: warehouse-web
+  template:
+    metadata:
+      labels:
+        app: warehouse-web
+    spec:
+      containers:
+        - name: warehouse-app
+          image: smartwarehouse/web:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: warehouse-config
+            - secretRef:
+                name: warehouse-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: warehouse-web-service
+  namespace: smart-warehouse
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30500
+  selector:
+    app: warehouse-web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: warehouse-ingress
+  namespace: smart-warehouse
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: warehouse.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: warehouse-web-service
+                port:
+                  number: 5000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: warehouse-web-hpa
+  namespace: smart-warehouse
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: warehouse-web-deployment
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

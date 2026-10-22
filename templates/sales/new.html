@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}New Sale Checkout | Smart Warehouse{% endblock %}
+{% block page_title %}Point of Sale (POS) & Order Dispatch{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <!-- Transactional Integrity Callout -->
+  <div class="glass-card" style="border-left: 4px solid var(--accent-emerald); margin-bottom: 1.5rem; background: rgba(16, 185, 129, 0.05);">
+    <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent-emerald); margin-bottom: 0.35rem;">
+      🛡️ Zero-Overselling ACID Transaction Guarantee
+    </h3>
+    <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+      Upon clicking "Process & Commit Sale", an explicit transaction is opened. The database acquires 
+      <code>SELECT ... FOR UPDATE</code> exclusive locks on the inventory rows, verifies sufficient stock, deducts the 
+      units, records the sale and sale items, creates audit ledger records, and executes <code>COMMIT</code>. If any item is 
+      insufficient, the entire order is rolled back to protect consistency.
+    </p>
+  </div>
+
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>🛒</span> Create Outbound Sale Transaction</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('sales_new') }}" id="sale-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Customer *</label>
+          <select name="customer_id" class="form-select" required>
+            <option value="">-- Select Customer --</option>
+            {% for c in customers %}
+              <option value="{{ c.customer_id }}">{{ c.customer_name }} ({{ c.phone }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Dispatch Warehouse *</label>
+          <select name="warehouse_id" id="warehouse_select" class="form-select" required onchange="filterProductsByWarehouse()">
+            <option value="">-- Select Fulfillment Warehouse --</option>
+            {% for w in warehouses %}
+              <option value="{{ w.warehouse_id }}">{{ w.warehouse_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Sales Representative *</label>
+          <select name="user_id" class="form-select" required>
+            {% for u in users %}
+              <option value="{{ u.user_id }}">{{ u.full_name }} ({{ u.role }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Terms</label>
+          <select name="payment_status" class="form-select">
+            <option value="Paid">Paid (Immediate Settlement)</option>
+            <option value="Pending">Pending (Net 30)</option>
+            <option value="Credit">Commercial Credit</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin: 1.5rem 0 0.75rem; border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="font-size: 1rem; font-weight: 700;">Cart Line Items</h3>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">+ Add Item</button>
+        </div>
+
+        <div id="cart-items-container">
+          <div class="cart-row" style="display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 0.75rem; background: rgba(0,0,0,0.15); padding: 0.75rem; border-radius: 8px;">
+            <div style="flex: 3;">
+              <label class="form-label" style="font-size: 0.75rem;">Product SKU *</label>
+              <select name="product_ids[]" class="form-select product-select" required onchange="updateRowPrice(this)">
+                <option value="">-- Choose Product --</option>
+                {% for p in products %}
+                  <option value="{{ p.product_id }}" data-price="{{ p.price }}">
+                    {{ p.product_name }} (₹{{ "{:,.2f}".format(p.price) }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div style="flex: 1.2;">
+              <label class="form-label" style="font-size: 0.75rem;">Quantity *</label>
+              <input type="number" name="quantities[]" class="form-control item-qty" min="1" value="1" required onchange="calculateCartTotal()">
+            </div>
+
+            <div style="flex: 1.5;">
+              <label class="form-label" style="font-size: 0.75rem;">Subtotal</label>
+              <input type="text" class="form-control item-subtotal" value="₹0.00" readonly style="font-weight: 700; color: var(--accent-emerald);">
+            </div>
+
+            <div>
+              <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" title="Remove item">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Cart Calculation -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 1.5rem; gap: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+          <span style="font-size: 1.1rem; color: var(--text-secondary);">Estimated Order Total:</span>
+          <span id="grand-total-display" style="font-size: 1.6rem; font-weight: 800; color: var(--accent-emerald);">₹0.00</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+        <a href="{{ url_for('sales_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-success">
+          <span>🔒 Process & Commit Sale</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateRowPrice(selectEl) {
+  const row = selectEl.closest('.cart-row');
+  const selectedOpt = selectEl.options[selectEl.selectedIndex];
+  const price = parseFloat(selectedOpt.getAttribute('data-price') || 0);
+  const qty = parseInt(row.querySelector('.item-qty').value || 1);
+  const subtotal = price * qty;
+  row.querySelector('.item-subtotal').value = '₹' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+  calculateCartTotal();
+}
+
+function calculateCartTotal() {
+  let grandTotal = 0;
+  document.querySelectorAll('.cart-row').forEach(row => {
+    const select = row.querySelector('.product-select');
+    const opt = select.options[select.selectedIndex];
+    const price = parseFloat(opt ? opt.getAttribute('data-price') || 0 : 0);
+    const qty = parseInt(row.querySelector('.item-qty').value || 0);
+    const subtotal = price * qty;
+    row.querySelector('.item-subtotal').value = '₹' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    grandTotal += subtotal;
+  });
+  document.getElementById('grand-total-display').innerText = '₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function addItemRow() {
+  const container = document.getElementById('cart-items-container');
+  const firstRow = container.querySelector('.cart-row');
+  const newRow = firstRow.cloneNode(true);
+  newRow.querySelector('.product-select').selectedIndex = 0;
+  newRow.querySelector('.item-qty').value = 1;
+  newRow.querySelector('.item-subtotal').value = '₹0.00';
+  container.appendChild(newRow);
+}
+
+function removeItemRow(btn) {
+  const rows = document.querySelectorAll('.cart-row');
+  if (rows.length > 1) {
+    btn.closest('.cart-row').remove();
+    calculateCartTotal();
+  } else {
+    alert("Sale must contain at least 1 item!");
+  }
+}
+</script>
+{% endblock %}

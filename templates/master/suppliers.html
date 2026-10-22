@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers | Smart Warehouse{% endblock %}
+{% block page_title %}Master Supplier Registry{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div class="card-header">
+    <div>
+      <h2><span>🚚</span> Registered Vendors & Suppliers</h2>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.2rem;">
+        Approved commercial vendors for automated replenishment and procurement.
+      </p>
+    </div>
+    <div class="card-actions">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-supplier-modal').classList.add('active')">
+        <span>+ Add New Supplier</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Supplier Company</th>
+          <th>Contact Person</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>GSTIN / Tax ID</th>
+          <th>Address</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in suppliers %}
+        <tr>
+          <td>#{{ s.supplier_id }}</td>
+          <td><strong>{{ s.supplier_name }}</strong></td>
+          <td>{{ s.contact_person or '-' }}</td>
+          <td>{{ s.phone or '-' }}</td>
+          <td>{{ s.email or '-' }}</td>
+          <td><code style="color: var(--accent-cyan);">{{ s.gst_number or 'N/A' }}</code></td>
+          <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ s.address or '-' }}</td>
+          <td>
+            <a href="{{ url_for('suppliers_delete', supplier_id=s.supplier_id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this supplier record?')">
+              Delete
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Supplier Modal -->
+<div id="add-supplier-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size: 1.1rem; font-weight: 700;">Add New Supplier</h3>
+      <button style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;" onclick="document.getElementById('add-supplier-modal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('suppliers_add') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Company / Supplier Name *</label>
+          <input type="text" name="supplier_name" class="form-control" required>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Contact Person</label>
+            <input type="text" name="contact_person" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" name="phone" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" name="email" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">GST Number / Tax ID</label>
+            <input type="text" name="gst_number" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Billing & Dispatch Address</label>
+          <input type="text" name="address" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-supplier-modal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Order {{ po.po_number }} | Smart Warehouse{% endblock %}
+{% block page_title %}Purchase Order Details & Inbound Fulfillment{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="glass-card">
+    <div class="card-header">
+      <div>
+        <h2><span>📥</span> Purchase Order #{{ po.po_number }}</h2>
+        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+          Created: {{ po.order_date }} | Officer: {{ po.full_name }}
+        </p>
+      </div>
+      <div>
+        <span class="status-badge {{ po.status.lower() }}" style="font-size: 0.9rem; padding: 0.4rem 0.9rem;">
+          Status: {{ po.status }}
+        </span>
+      </div>
+    </div>
+
+    <!-- PO Meta -->
+    <div class="form-grid" style="margin-bottom: 2rem;">
+      <div style="background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Supplier Details</span>
+        <h4 style="font-size: 1.05rem; font-weight: 700; margin: 0.3rem 0;">{{ po.supplier_name }}</h4>
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">Contact: {{ po.contact_person or 'Representative' }}</p>
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">Phone: {{ po.phone }} | GST: {{ po.gst_number }}</p>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">{{ po.address }}</p>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Receiving Warehouse</span>
+        <h4 style="font-size: 1.05rem; font-weight: 700; margin: 0.3rem 0; color: var(--accent-cyan);">{{ po.warehouse_name }}</h4>
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">Location: {{ po.location }}</p>
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">Hub Manager: {{ po.manager_name }}</p>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Procured Line Items</h3>
+    <div class="table-responsive" style="margin-bottom: 2rem;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product Name</th>
+            <th>Barcode</th>
+            <th style="text-align: center;">Quantity Ordered</th>
+            <th style="text-align: right;">Unit Price</th>
+            <th style="text-align: right;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ item.product_name }}</strong></td>
+            <td><code>{{ item.barcode }}</code></td>
+            <td style="text-align: center; font-weight: 700;">{{ item.quantity }} units</td>
+            <td style="text-align: right;">₹{{ "{:,.2f}".format(item.unit_price) }}</td>
+            <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">₹{{ "{:,.2f}".format(item.subtotal) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" style="text-align: right; font-weight: 700; padding: 1rem 0.5rem; font-size: 1.05rem;">Total Purchase Order Value:</td>
+            <td style="text-align: right; font-weight: 800; padding: 1rem 0.5rem; font-size: 1.25rem; color: var(--accent-emerald);">
+              ₹{{ "{:,.2f}".format(po.total_amount) }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Inbound Receiving Action -->
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 1.5rem;">
+      <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary">← Back to PO List</a>
+      
+      {% if po.status != 'Received' and po.status != 'Cancelled' %}
+      <form action="{{ url_for('purchases_receive', po_id=po.purchase_order_id) }}" method="POST">
+        <button type="submit" class="btn btn-success" onclick="return confirm('Confirm receipt of shipment? This will execute an atomic database transaction to increment stock in {{ po.warehouse_name }}.')">
+          <span>📥 Receive Shipment & Restock Warehouse</span>
+        </button>
+      </form>
+      {% else %}
+        <span class="status-badge healthy">Shipment Received & Checked In</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

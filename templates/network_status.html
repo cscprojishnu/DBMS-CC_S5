@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Network & Real-Time Deployment Cockpit | Smart Warehouse{% endblock %}
+{% block page_title %}Network & Live Multi-Device Deployment Cockpit{% endblock %}
+
+{% block content %}
+<div style="max-width: 1050px; margin: 0 auto;">
+  <!-- Active Deployment Header -->
+  <div class="glass-card" style="border-left: 4px solid var(--accent-emerald); background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.04) 100%); margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+          <span class="status-badge healthy">● Real-Time Deployment Active</span>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Distributed Local Cloud Node</span>
+        </div>
+        <h2 style="font-size: 1.4rem; font-weight: 800;">Real-Time Multi-Laptop & Mobile Access</h2>
+        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.25rem;">
+          Your laptop is currently operating as the centralized Cloud Server for this warehouse network.
+          Any device connected to your Wi-Fi or phone hotspot can access this system concurrently.
+        </p>
+      </div>
+
+      <div style="text-align: right; background: rgba(0,0,0,0.3); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--border-subtle);">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Live SSE Subscribers</span>
+        <div style="font-size: 2rem; font-weight: 800; color: var(--accent-emerald); line-height: 1.1;">
+          {{ active_listeners }} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">active clients</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; margin-bottom: 2rem;">
+    <!-- Connection Details Card -->
+    <div class="glass-card">
+      <div class="card-header">
+        <h2><span>📡</span> LAN Network Connection Coordinates</h2>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div>
+          <label class="form-label">LAN Network URL (Open on 2nd Laptop / Phone)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="lan-url-input" class="form-control" value="http://{{ config.LOCAL_IP }}:{{ config.PORT }}" readonly style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent-cyan);">
+            <button class="btn btn-secondary" onclick="copyLanUrl()">Copy</button>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
+            Both devices must be connected to the same Wi-Fi network or Mobile Hotspot.
+          </small>
+        </div>
+
+        <div>
+          <label class="form-label">Local Host URL (This Machine Only)</label>
+          <input type="text" class="form-control" value="http://localhost:{{ config.PORT }}" readonly style="font-family: 'JetBrains Mono', monospace; color: var(--text-secondary);">
+        </div>
+
+        <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.35rem;">
+            🛡️ Windows Firewall Setup (If 2nd Laptop cannot connect)
+          </h4>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+            If Windows Firewall blocks port 5000, open PowerShell as Administrator and run:
+          </p>
+          <code style="display: block; background: #050811; padding: 0.5rem; border-radius: 6px; font-size: 0.75rem; color: #4ade80; margin-top: 0.5rem; word-break: break-all;">
+            New-NetFirewallRule -DisplayName "SmartWarehouse5000" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow
+          </code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Scan QR Code for Mobile Phones / Tablets -->
+    <div class="glass-card" style="text-align: center;">
+      <div class="card-header" style="justify-content: center;">
+        <h2><span>📱</span> Instant Mobile / Tablet QR Access</h2>
+      </div>
+
+      <div style="padding: 1.5rem 0;">
+        <div style="background: #ffffff; padding: 1rem; border-radius: 12px; display: inline-block; box-shadow: var(--shadow-md);">
+          <!-- Dynamic QR Code rendered via reliable CDN -->
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=http://{{ config.LOCAL_IP }}:{{ config.PORT }}" 
+               alt="Warehouse Network QR Code" 
+               style="width: 180px; height: 180px; display: block;">
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 1rem;">
+          Scan with your phone's camera while connected to the same Wi-Fi to use the system as an on-dock warehouse scanner!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-Deployment Modes Grid -->
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>🚀</span> Deployment Mode Support Matrix</h2>
+      <a href="/static/DEPLOYMENT_GUIDE.md" target="_blank" class="btn btn-secondary btn-sm">
+        <span>📖 Read DEPLOYMENT_GUIDE.md</span>
+      </a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Deployment Tier</th>
+            <th>Technology Stack</th>
+            <th>Real-Time Status</th>
+            <th>Deployment Command</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Tier 1: Multi-Laptop LAN</strong></td>
+            <td>Python 3.14 + Flask + MySQL 8.0 (Bound to 0.0.0.0)</td>
+            <td><span class="status-badge healthy">✓ ACTIVE NOW</span></td>
+            <td><code>python run_server.py</code></td>
+          </tr>
+          <tr>
+            <td><strong>Tier 2: Public HTTPS Cloud Tunnel</strong></td>
+            <td>Cloudflare Tunnel / Ngrok (Zero router config)</td>
+            <td><span class="status-badge surplus">READY TO RUN</span></td>
+            <td><code>cloudflared tunnel --url http://localhost:5000</code></td>
+          </tr>
+          <tr>
+            <td><strong>Tier 3: Containerized Docker</strong></td>
+            <td>Docker Compose (Flask Web + MySQL + Redis Cache)</td>
+            <td><span class="status-badge approved">COMPOSE FILE READY</span></td>
+            <td><code>docker-compose -f code/docker/docker-compose.yml up</code></td>
+          </tr>
+          <tr>
+            <td><strong>Tier 4: Orchestrated Kubernetes</strong></td>
+            <td>Minikube / EKS / GKE (Deployments, Services, HPA, PVC)</td>
+            <td><span class="status-badge pending">YAML MANIFESTS READY</span></td>
+            <td><code>kubectl apply -f code/k8s/</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyLanUrl() {
+  const input = document.getElementById("lan-url-input");
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value);
+  showToast("URL Copied", "LAN URL copied to clipboard. Share with your 2nd laptop!", "success");
+}
+</script>
+{% endblock %}

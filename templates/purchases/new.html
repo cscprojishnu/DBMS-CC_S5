@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Create Purchase Order | Smart Warehouse{% endblock %}
+{% block page_title %}Inbound Purchase Order Creation{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>📥</span> Create Procurement Purchase Order</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('purchases_new') }}">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Vendor / Supplier *</label>
+          <select name="supplier_id" class="form-select" required>
+            <option value="">-- Choose Supplier --</option>
+            {% for s in suppliers %}
+              <option value="{{ s.supplier_id }}" {% if pre_supplier_id == s.supplier_id|string %}selected{% endif %}>
+                {{ s.supplier_name }} (GST: {{ s.gst_number or 'N/A' }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Receiving Warehouse Destination *</label>
+          <select name="warehouse_id" class="form-select" required>
+            <option value="">-- Choose Warehouse --</option>
+            {% for w in warehouses %}
+              <option value="{{ w.warehouse_id }}" {% if pre_warehouse_id == w.warehouse_id|string %}selected{% endif %}>
+                {{ w.warehouse_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Procurement Officer / Manager *</label>
+        <select name="user_id" class="form-select" required>
+          {% for u in users %}
+            <option value="{{ u.user_id }}">{{ u.full_name }} ({{ u.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Product to Reorder *</label>
+          <select name="product_id" class="form-select" required>
+            <option value="">-- Choose Product SKU --</option>
+            {% for p in products %}
+              <option value="{{ p.product_id }}" {% if pre_product_id == p.product_id|string %}selected{% endif %}>
+                {{ p.product_name }} (Wholesale: ₹{{ "{:,.2f}".format(p.price) }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Order Quantity (Units) *</label>
+          <input type="number" name="quantity" class="form-control" min="1" value="{{ pre_quantity or 25 }}" required>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Generate Purchase Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Ledger | Smart Warehouse{% endblock %}
+{% block page_title %}Immutable Inventory Audit Ledger{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div class="card-header">
+    <div>
+      <h2><span>📑</span> Complete Transactional Audit Trail</h2>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.2rem;">
+        Cryptographically tracked database journal of all inbound, outbound, transfer, and adjustment operations.
+      </p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tx ID</th>
+          <th>Type</th>
+          <th>Product Name</th>
+          <th>Warehouse Hub</th>
+          <th>Movement</th>
+          <th>Stock Transition</th>
+          <th>Executed By</th>
+          <th>Operational Note</th>
+          <th>Date & Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td style="font-family: 'JetBrains Mono', monospace;">#{{ tx.transaction_id }}</td>
+          <td>
+            <span class="status-badge {% if tx.transaction_type in ['Purchase', 'Transfer_In'] %}healthy{% elif tx.transaction_type in ['Sale', 'Transfer_Out'] %}surplus{% else %}pending{% endif %}">
+              {{ tx.transaction_type }}
+            </span>
+          </td>
+          <td><strong>{{ tx.product_name }}</strong></td>
+          <td><span style="color: var(--accent-cyan);">{{ tx.warehouse_name }}</span></td>
+          <td>
+            <strong style="color: {% if tx.new_quantity > tx.previous_quantity %}var(--accent-emerald){% else %}var(--accent-rose){% endif %};">
+              {% if tx.new_quantity > tx.previous_quantity %}+{% else %}-{% endif %}{{ tx.quantity }}
+            </strong>
+          </td>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
+            {{ tx.previous_quantity }} ➔ {{ tx.new_quantity }}
+          </td>
+          <td>{{ tx.full_name }}</td>
+          <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ tx.notes or '-' }}</td>
+          <td style="color: var(--text-muted); font-size: 0.8rem;">{{ tx.transaction_date }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+            No transactions recorded yet in the audit log.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

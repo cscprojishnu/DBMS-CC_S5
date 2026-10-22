@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Adjust Stock Quantity | Smart Warehouse{% endblock %}
+{% block page_title %}Audit-Tracked Stock Quantity Adjustment{% endblock %}
+
+{% block content %}
+<div style="max-width: 650px; margin: 0 auto;">
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>✏️</span> Adjust Stock Quantity</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('inventory_edit', inventory_id=item.inventory_id) }}">
+      <div class="form-group">
+        <label class="form-label">Product Name</label>
+        <input type="text" class="form-control" value="{{ item.product_name }} (Barcode: {{ item.barcode }})" readonly style="background: rgba(0,0,0,0.3); opacity: 0.85;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Warehouse</label>
+        <input type="text" class="form-control" value="{{ item.warehouse_name }}" readonly style="background: rgba(0,0,0,0.3); opacity: 0.85;">
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Current Stock in System</label>
+          <input type="text" class="form-control" value="{{ item.quantity }} units" readonly style="font-weight: 700; color: var(--accent-cyan);">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">New Physical Verified Quantity *</label>
+          <input type="number" name="quantity" class="form-control" min="0" value="{{ item.quantity }}" required style="font-weight: 700;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Adjustment Reason / Audit Explanation *</label>
+        <input type="text" name="notes" class="form-control" placeholder="e.g. Physical cycle count discrepancy / damaged goods write-off" required>
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Commit Stock Adjustment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

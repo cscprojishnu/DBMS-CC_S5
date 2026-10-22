@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Add Inventory Stock Row | Smart Warehouse{% endblock %}
+{% block page_title %}Assign Product to Warehouse Inventory{% endblock %}
+
+{% block content %}
+<div style="max-width: 650px; margin: 0 auto;">
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>➕</span> Add Product Stock to Warehouse</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('inventory_add') }}">
+      <div class="form-group">
+        <label class="form-label">Product SKU *</label>
+        <select name="product_id" class="form-select" required>
+          <option value="">-- Choose Product --</option>
+          {% for p in products %}
+            <option value="{{ p.product_id }}">{{ p.product_name }} (Barcode: {{ p.barcode }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Target Warehouse *</label>
+        <select name="warehouse_id" class="form-select" required>
+          <option value="">-- Choose Warehouse --</option>
+          {% for w in warehouses %}
+            <option value="{{ w.warehouse_id }}">{{ w.warehouse_name }} ({{ w.location }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Initial Stock Quantity *</label>
+        <input type="number" name="quantity" class="form-control" min="0" value="10" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Initial Opening Reason</label>
+        <input type="text" name="notes" class="form-control" placeholder="e.g. Initial bin allocation / opening stock">
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Inventory Row</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

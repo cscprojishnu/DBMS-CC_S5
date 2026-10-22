@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Cloud Smart Warehouse{% endblock %}
+{% block page_title %}Executive Warehouse Dashboard{% endblock %}
+
+{% block content %}
+<!-- Real-Time LAN Multi-Device Access Banner -->
+<div class="glass-card" style="border-left: 4px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(2, 132, 199, 0.04) 100%);">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+        <span class="status-badge healthy">✓ Live Network Active</span>
+        <span style="font-size: 0.8rem; color: var(--text-secondary);">Distributed Real-Time Sync Enabled</span>
+      </div>
+      <h3 style="font-size: 1.1rem; font-weight: 700;">Multi-Device Real-Time Deployment</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        This application is live on your local network. Open 
+        <strong style="color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;">http://{{ config.LOCAL_IP }}:{{ config.PORT }}</strong> 
+        from any other laptop, tablet, or phone on this Wi-Fi to experience concurrent operations in real time!
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('network_status') }}" class="btn btn-secondary btn-sm">
+        <span>📶 Connection Details & QR</span>
+      </a>
+      <a href="{{ url_for('concurrency_lab') }}" class="btn btn-primary btn-sm">
+        <span>⚡ Test Concurrency Lab</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards Grid -->
+<div class="kpi-grid">
+  <div class="kpi-card" style="--card-accent: var(--grad-primary);">
+    <div class="kpi-header">
+      <span class="kpi-title">Inventory Valuation</span>
+      <div class="kpi-icon-wrap" style="color: var(--accent-cyan);">💰</div>
+    </div>
+    <div class="kpi-value">₹{{ "{:,.2f}".format(total_valuation) }}</div>
+    <div class="kpi-subtext">Total asset value across all hubs</div>
+  </div>
+
+  <div class="kpi-card" style="--card-accent: var(--grad-accent);">
+    <div class="kpi-header">
+      <span class="kpi-title">Total Units Stored</span>
+      <div class="kpi-icon-wrap" style="color: var(--accent-blue);">📦</div>
+    </div>
+    <div class="kpi-value">{{ "{:,}".format(total_units) }}</div>
+    <div class="kpi-subtext">{{ product_count }} distinct product SKUs</div>
+  </div>
+
+  <div class="kpi-card" style="--card-accent: var(--grad-warning);">
+    <div class="kpi-header">
+      <span class="kpi-title">Low Stock Warnings</span>
+      <div class="kpi-icon-wrap" style="color: var(--accent-amber);">⚠️</div>
+    </div>
+    <div class="kpi-value" style="color: {% if low_stock_count > 0 %}var(--accent-amber){% else %}var(--text-primary){% endif %};">
+      {{ low_stock_count }}
+    </div>
+    <div class="kpi-subtext">SKUs at or below safety threshold</div>
+  </div>
+
+  <div class="kpi-card" style="--card-accent: var(--grad-success);">
+    <div class="kpi-header">
+      <span class="kpi-title">Sales Revenue</span>
+      <div class="kpi-icon-wrap" style="color: var(--accent-emerald);">📈</div>
+    </div>
+    <div class="kpi-value">₹{{ "{:,.2f}".format(total_sales_revenue) }}</div>
+    <div class="kpi-subtext">{{ sales_count }} completed transactions</div>
+  </div>
+
+  <div class="kpi-card" style="--card-accent: var(--grad-card);">
+    <div class="kpi-header">
+      <span class="kpi-title">Active Warehouses</span>
+      <div class="kpi-icon-wrap" style="color: var(--accent-purple);">🏢</div>
+    </div>
+    <div class="kpi-value">{{ warehouse_count }}</div>
+    <div class="kpi-subtext">Central, Coastal, West & North Hubs</div>
+  </div>
+</div>
+
+<!-- Low Stock Critical Action Widget -->
+{% if low_stock_items %}
+<div class="glass-card" style="border: 1px solid rgba(245, 158, 11, 0.35);">
+  <div class="card-header">
+    <h2>
+      <span style="color: var(--accent-amber);">⚠️</span>
+      <span>Automated Replenishment Trigger: {{ low_stock_items|length }} Items Requiring Reorder</span>
+    </h2>
+    <div class="card-actions">
+      <form action="{{ url_for('auto_generate_pos') }}" method="POST" style="display:inline;">
+        <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Trigger automated Purchase Orders for all low-stock items grouped by supplier?')">
+          <span>⚡ Auto-Generate Purchase Orders</span>
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>Warehouse</th>
+          <th>Current Stock</th>
+          <th>Safety Minimum</th>
+          <th>Recommended Reorder</th>
+          <th>Preferred Supplier</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in low_stock_items %}
+        <tr>
+          <td><strong>{{ item.product_name }}</strong></td>
+          <td>{{ item.warehouse_name }}</td>
+          <td>
+            <span class="status-badge {% if item.current_stock == 0 %}out_of_stock{% else %}low_stock{% endif %}">
+              {{ item.current_stock }} units
+            </span>
+          </td>
+          <td>{{ item.minimum_stock }} units</td>
+          <td style="color: var(--accent-cyan); font-weight: 600;">+{{ item.suggested_reorder_qty }} units</td>
+          <td>{{ item.supplier_name }} ({{ item.supplier_phone }})</td>
+          <td>
+            <a href="{{ url_for('purchases_new') }}?supplier_id={{ item.supplier_id }}&warehouse_id={{ item.warehouse_id }}&product_id={{ item.product_id }}&quantity={{ item.suggested_reorder_qty }}" class="btn btn-secondary btn-sm">
+              <span>Create PO</span>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Warehouse Stock Utilization & Performance -->
+<div class="glass-card">
+  <div class="card-header">
+    <h2>
+      <span>🏢</span>
+      <span>Warehouse Hub Utilization & Asset Valuation</span>
+    </h2>
+    <div class="card-actions">
+      <a href="{{ url_for('stock_transfer') }}" class="btn btn-secondary btn-sm">
+        <span>🔄 Inter-Warehouse Transfer</span>
+      </a>
+      <a href="{{ url_for('inventory_list') }}" class="btn btn-primary btn-sm">
+        <span>View Full Stock Catalog</span>
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Warehouse Name</th>
+          <th>Location</th>
+          <th>SKU Count</th>
+          <th>Units Stored</th>
+          <th>Total Valuation</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wh in warehouse_stats %}
+        <tr>
+          <td><strong>{{ wh.warehouse_name }}</strong></td>
+          <td>{{ wh.location }}</td>
+          <td>{{ wh.total_skus }} SKUs</td>
+          <td><strong>{{ "{:,}".format(wh.total_units_stored) }}</strong> units</td>
+          <td style="color: var(--accent-emerald); font-weight: 700;">₹{{ "{:,.2f}".format(wh.total_inventory_valuation) }}</td>
+          <td>
+            <a href="{{ url_for('inventory_list') }}?warehouse_id={{ wh.warehouse_id }}" class="btn btn-secondary btn-sm">
+              Filter Inventory
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Real-Time Inventory Transactions Feed (Audit Trail) -->
+<div class="glass-card">
+  <div class="card-header">
+    <h2>
+      <span>📑</span>
+      <span>Live Inventory Transactions Feed (ACID Audit Ledger)</span>
+    </h2>
+    <div class="card-actions">
+      <a href="{{ url_for('transactions_list') }}" class="btn btn-secondary btn-sm">
+        <span>View Full Ledger</span>
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tx ID</th>
+          <th>Type</th>
+          <th>Product</th>
+          <th>Warehouse</th>
+          <th>Movement</th>
+          <th>Stock Transition</th>
+          <th>Notes / Reason</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in recent_transactions %}
+        <tr>
+          <td style="font-family: 'JetBrains Mono', monospace;">#{{ tx.transaction_id }}</td>
+          <td>
+            <span class="status-badge {% if tx.transaction_type in ['Purchase', 'Transfer_In'] %}healthy{% elif tx.transaction_type in ['Sale', 'Transfer_Out'] %}surplus{% else %}pending{% endif %}">
+              {{ tx.transaction_type }}
+            </span>
+          </td>
+          <td><strong>{{ tx.product_name }}</strong></td>
+          <td>{{ tx.warehouse_name }}</td>
+          <td>
+            <strong style="color: {% if tx.new_quantity > tx.previous_quantity %}var(--accent-emerald){% else %}var(--accent-rose){% endif %};">
+              {% if tx.new_quantity > tx.previous_quantity %}+{% else %}-{% endif %}{{ tx.quantity }}
+            </strong>
+          </td>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+            {{ tx.previous_quantity }} ➔ {{ tx.new_quantity }}
+          </td>
+          <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ tx.notes or '-' }}</td>
+          <td style="color: var(--text-muted); font-size: 0.8rem;">{{ tx.transaction_date }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No recent transactions recorded yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

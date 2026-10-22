@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Stock Catalog | Smart Warehouse{% endblock %}
+{% block page_title %}Real-Time Inventory Stock Management{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+  <div class="card-header">
+    <div>
+      <h2><span>🏬</span> Stock Catalog Across Warehouses</h2>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.2rem;">
+        Synchronized real-time inventory levels governed by MySQL ACID transactions and row locks.
+      </p>
+    </div>
+    <div class="card-actions">
+      <a href="{{ url_for('stock_transfer') }}" class="btn btn-secondary btn-sm">
+        <span>🔄 Inter-Warehouse Transfer</span>
+      </a>
+      <a href="{{ url_for('inventory_add') }}" class="btn btn-primary btn-sm">
+        <span>+ Add Inventory Row</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <form method="GET" action="{{ url_for('inventory_list') }}" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+    <div style="flex: 1; min-width: 200px;">
+      <select name="warehouse_id" class="form-select" onchange="this.form.submit()">
+        <option value="">-- All Warehouses --</option>
+        {% for wh in warehouses %}
+          <option value="{{ wh.warehouse_id }}" {% if selected_warehouse == wh.warehouse_id|string %}selected{% endif %}>
+            {{ wh.warehouse_name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 200px;">
+      <select name="category_id" class="form-select" onchange="this.form.submit()">
+        <option value="">-- All Categories --</option>
+        {% for cat in categories %}
+          <option value="{{ cat.category_id }}" {% if selected_category == cat.category_id|string %}selected{% endif %}>
+            {{ cat.category_name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 180px;">
+      <select name="status" class="form-select" onchange="this.form.submit()">
+        <option value="">-- All Stock Statuses --</option>
+        <option value="HEALTHY" {% if selected_status == 'HEALTHY' %}selected{% endif %}>Healthy Stock</option>
+        <option value="LOW_STOCK" {% if selected_status == 'LOW_STOCK' %}selected{% endif %}>Low Stock Warnings</option>
+        <option value="OUT_OF_STOCK" {% if selected_status == 'OUT_OF_STOCK' %}selected{% endif %}>Out of Stock</option>
+      </select>
+    </div>
+
+    <div>
+      <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Reset Filters</a>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Barcode</th>
+          <th>Product Name</th>
+          <th>Category</th>
+          <th>Warehouse</th>
+          <th>Quantity</th>
+          <th>Min Safety Stock</th>
+          <th>Unit Price</th>
+          <th>Total Valuation</th>
+          <th>Status</th>
+          <th>Last Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr id="inv-row-{{ item.product_id }}-{{ item.warehouse_id }}">
+          <td style="font-family: 'JetBrains Mono', monospace;">#{{ item.inventory_id }}</td>
+          <td><code style="background: rgba(255,255,255,0.06); padding: 0.15rem 0.4rem; border-radius: 4px;">{{ item.barcode or 'N/A' }}</code></td>
+          <td><strong>{{ item.product_name }}</strong></td>
+          <td>{{ item.category_name }}</td>
+          <td><span style="color: var(--accent-cyan); font-weight: 600;">{{ item.warehouse_name }}</span></td>
+          <td>
+            <strong style="font-size: 1.05rem;">{{ item.quantity }}</strong> units
+          </td>
+          <td>{{ item.minimum_stock }} units</td>
+          <td>₹{{ "{:,.2f}".format(item.price) }}</td>
+          <td style="font-weight: 700; color: var(--accent-emerald);">₹{{ "{:,.2f}".format(item.total_valuation) }}</td>
+          <td>
+            <span class="status-badge {{ item.stock_status.lower() }}">
+              {{ item.stock_status }}
+            </span>
+          </td>
+          <td style="font-size: 0.78rem; color: var(--text-muted);">{{ item.last_updated }}</td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              <a href="{{ url_for('inventory_edit', inventory_id=item.inventory_id) }}" class="btn btn-secondary btn-sm" title="Adjust Stock">
+                <span>✏️ Adjust</span>
+              </a>
+              <a href="{{ url_for('stock_transfer') }}?product_id={{ item.product_id }}&from_warehouse_id={{ item.warehouse_id }}" class="btn btn-secondary btn-sm" title="Transfer to another warehouse">
+                <span>🔄 Transfer</span>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+            No inventory records found matching current filter criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

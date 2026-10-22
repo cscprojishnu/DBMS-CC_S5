@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Smart Warehouse Cloud System{% endblock %} | Real-Time Inventory</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-badge">📦</div>
+        <div class="logo-text">
+          <h1>Smart Warehouse</h1>
+          <span>Cloud Enterprise System</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Operations</div>
+        <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('inventory_list') }}" class="nav-link {% if 'inventory' in request.endpoint and 'transfer' not in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🏬</span>
+          <span>Inventory Stock</span>
+          {% if low_stock_count and low_stock_count > 0 %}
+            <span class="nav-badge">{{ low_stock_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('stock_transfer') }}" class="nav-link {% if request.endpoint == 'stock_transfer' %}active{% endif %}">
+          <span class="nav-icon">🔄</span>
+          <span>Inter-WH Transfer</span>
+        </a>
+        <a href="{{ url_for('sales_list') }}" class="nav-link {% if 'sales' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🛒</span>
+          <span>Sales & Checkout</span>
+        </a>
+        <a href="{{ url_for('purchases_list') }}" class="nav-link {% if 'purchases' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">📥</span>
+          <span>Purchase Orders</span>
+        </a>
+        <a href="{{ url_for('transactions_list') }}" class="nav-link {% if request.endpoint == 'transactions_list' %}active{% endif %}">
+          <span class="nav-icon">📑</span>
+          <span>Audit Ledger</span>
+        </a>
+
+        <div class="nav-section-title">System Tools & Testing</div>
+        <a href="{{ url_for('concurrency_lab') }}" class="nav-link {% if request.endpoint == 'concurrency_lab' %}active{% endif %}" style="color: var(--accent-cyan);">
+          <span class="nav-icon">⚡</span>
+          <span>Concurrency Stress Lab</span>
+        </a>
+        <a href="{{ url_for('network_status') }}" class="nav-link {% if request.endpoint == 'network_status' %}active{% endif %}">
+          <span class="nav-icon">🌐</span>
+          <span>Network & Mobile Access</span>
+        </a>
+
+        <div class="nav-section-title">Master Data</div>
+        <a href="{{ url_for('products_list') }}" class="nav-link {% if 'products' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🏷️</span>
+          <span>Products</span>
+        </a>
+        <a href="{{ url_for('warehouses_list') }}" class="nav-link {% if 'warehouses' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🏢</span>
+          <span>Warehouses</span>
+        </a>
+        <a href="{{ url_for('suppliers_list') }}" class="nav-link {% if 'suppliers' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">🚚</span>
+          <span>Suppliers</span>
+        </a>
+        <a href="{{ url_for('categories_list') }}" class="nav-link {% if 'categories' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">📁</span>
+          <span>Categories</span>
+        </a>
+        <a href="{{ url_for('customers_list') }}" class="nav-link {% if 'customers' in request.endpoint %}active{% endif %}">
+          <span class="nav-icon">👥</span>
+          <span>Customers</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="deployment-pill">
+          <span class="pulse-dot"></span>
+          <span>Real-Time Sync Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Container -->
+    <div class="main-wrapper">
+      <!-- Header Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h2 class="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+          <a href="{{ url_for('network_status') }}" class="lan-badge" title="Access this URL from other laptops/phones on same Wi-Fi">
+            <span>📡 LAN Access:</span>
+            <strong>http://{{ config.LOCAL_IP }}:{{ config.PORT }}</strong>
+          </a>
+        </div>
+
+        <div class="topbar-right">
+          <div id="live-status-indicator" class="realtime-indicator">
+            <span class="pulse-dot"></span>
+            <span>Real-Time Live</span>
+          </div>
+          <button id="theme-toggle" class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+            🌓 Mode
+          </button>
+        </div>
+      </header>
+
+      <!-- Page Body -->
+      <main class="page-body">
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-container">
+              {% for category, message in messages %}
+                <div class="flash-alert {{ category }}">
+                  <span>{{ message }}</span>
+                  <button style="background:none; border:none; color:inherit; cursor:pointer;" onclick="this.parentElement.remove()">✕</button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Real-time Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Real-Time SSE JavaScript -->
+  <script src="{{ url_for('static', filename='js/real_time.js') }}"></script>
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute("data-theme") || "dark";
+      const target = current === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", target);
+      localStorage.setItem("theme", target);
+    }
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

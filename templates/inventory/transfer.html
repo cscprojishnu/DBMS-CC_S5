@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Inter-Warehouse Stock Transfer | Smart Warehouse{% endblock %}
+{% block page_title %}Inter-Warehouse Atomic Stock Transfer{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <!-- Technical Architecture Callout -->
+  <div class="glass-card" style="border-left: 4px solid var(--accent-purple); margin-bottom: 1.5rem; background: rgba(139, 92, 246, 0.05);">
+    <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.35rem;">
+      🔒 Atomic Stock Transfer & Deadlock Prevention Engine
+    </h3>
+    <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+      Inter-warehouse stock transfer touches two distinct warehouse inventory records simultaneously. To prevent 
+      <strong>deadlocks</strong> when multiple managers transfer stock in opposite directions concurrently, the system enforces 
+      <strong>Canonical Resource Ordering</strong>: Row-level exclusive locks (<code>SELECT ... FOR UPDATE</code>) are always 
+      acquired in ascending primary key order, followed by atomic two-phase commit and rollback protection.
+    </p>
+  </div>
+
+  <div class="glass-card">
+    <div class="card-header">
+      <h2><span>🔄</span> Transfer Stock Between Warehouse Hubs</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('stock_transfer') }}">
+      <div class="form-group">
+        <label class="form-label">Select Product to Transfer *</label>
+        <select name="product_id" id="product_id" class="form-select" required>
+          <option value="">-- Choose Product --</option>
+          {% for p in products %}
+            <option value="{{ p.product_id }}" {% if selected_product_id == p.product_id|string %}selected{% endif %}>
+              {{ p.product_name }} (Barcode: {{ p.barcode }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Source Warehouse (Debit Hub) *</label>
+          <select name="from_warehouse_id" id="from_warehouse_id" class="form-select" required>
+            <option value="">-- Select Source Warehouse --</option>
+            {% for wh in warehouses %}
+              <option value="{{ wh.warehouse_id }}" {% if selected_from_wh == wh.warehouse_id|string %}selected{% endif %}>
+                {{ wh.warehouse_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Destination Warehouse (Credit Hub) *</label>
+          <select name="to_warehouse_id" id="to_warehouse_id" class="form-select" required>
+            <option value="">-- Select Destination Warehouse --</option>
+            {% for wh in warehouses %}
+              <option value="{{ wh.warehouse_id }}">{{ wh.warehouse_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Transfer Quantity (Units) *</label>
+          <input type="number" name="quantity" class="form-control" min="1" placeholder="e.g. 10" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Authorized Warehouse Staff / User *</label>
+          <select name="user_id" class="form-select" required>
+            {% for u in users %}
+              <option value="{{ u.user_id }}">{{ u.full_name }} ({{ u.role }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Transfer Manifest / Internal Reason</label>
+        <input type="text" name="notes" class="form-control" placeholder="e.g. Rebalancing regional stock for peak demand">
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <a href="{{ url_for('inventory_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary" onclick="return validateTransfer()">
+          <span>🔒 Execute Atomic Transfer</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function validateTransfer() {
+  const fromWh = document.getElementById("from_warehouse_id").value;
+  const toWh = document.getElementById("to_warehouse_id").value;
+  if (fromWh && toWh && fromWh === toWh) {
+    alert("Source and Destination warehouses cannot be the same!");
+    return false;
+  }
+  return true;
+}
+</script>
+{% endblock %}

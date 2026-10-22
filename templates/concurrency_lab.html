@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Concurrency Stress Testing Lab | Smart Warehouse{% endblock %}
+{% block page_title %}High-Concurrency Stress Testing Lab{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto;">
+  <!-- Stress Test Header -->
+  <div class="glass-card" style="border-left: 4px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%); margin-bottom: 1.5rem;">
+    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.4rem;">
+      ⚡ Real-Time Concurrency Control & Stress Testing Lab
+    </h3>
+    <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;">
+      This interactive test harness launches multiple simultaneous buyer threads synchronized by a 
+      <strong>Threading Barrier</strong> to execute orders against the MySQL database at the <em>exact same millisecond</em>.
+      Observe the contrast between <strong>Lock-based Protocols (2PL with SELECT ... FOR UPDATE)</strong>, 
+      <strong>Optimistic Concurrency Control (OCC)</strong>, and <strong>Uncontrolled Execution (Lost Updates)</strong>.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 1.5rem; align-items: start;">
+    <!-- Left Configuration Panel -->
+    <div class="glass-card">
+      <div class="card-header">
+        <h2><span>⚙️</span> Simulation Parameters</h2>
+      </div>
+
+      <form id="concurrency-form" onsubmit="event.preventDefault(); runConcurrencySimulation();">
+        <div class="form-group">
+          <label class="form-label">Test Target Product *</label>
+          <select id="sim-product-id" class="form-select" required>
+            {% for p in products %}
+              <option value="{{ p.product_id }}">{{ p.product_name }} ({{ p.barcode }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Warehouse Hub *</label>
+          <select id="sim-warehouse-id" class="form-select" required>
+            {% for w in warehouses %}
+              <option value="{{ w.warehouse_id }}">{{ w.warehouse_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Baseline Initial Stock *</label>
+            <input type="number" id="sim-initial-stock" class="form-control" value="5" min="1" max="100" required>
+            <small style="color: var(--text-muted); font-size: 0.72rem;">Stock will be set to this before test</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Units per Buyer Thread *</label>
+            <input type="number" id="sim-qty-per-buyer" class="form-control" value="2" min="1" max="20" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Concurrent Buyer Threads *</label>
+          <select id="sim-threads" class="form-select">
+            <option value="2">2 Concurrent Buyers (Low contention)</option>
+            <option value="3" selected>3 Concurrent Buyers (Moderate contention)</option>
+            <option value="5">5 Concurrent Buyers (High contention)</option>
+            <option value="8">8 Concurrent Buyers (Extreme stress)</option>
+          </select>
+        </div>
+
+        <!-- Mode Radio Selector -->
+        <div class="form-group" style="margin-top: 1.5rem;">
+          <label class="form-label">Transaction Concurrency Protocol:</label>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+              <input type="radio" name="sim-mode" value="pessimistic" checked style="margin-top: 0.2rem;">
+              <div>
+                <strong style="color: var(--accent-cyan); font-size: 0.88rem;">Pessimistic 2-Phase Locking (2PL)</strong>
+                <p style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                  Acquires MySQL <code>SELECT ... FOR UPDATE</code> Exclusive X-Locks. Guarantees 100% serializability and eliminates overselling.
+                </p>
+              </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+              <input type="radio" name="sim-mode" value="optimistic" style="margin-top: 0.2rem;">
+              <div>
+                <strong style="color: var(--accent-emerald); font-size: 0.88rem;">Optimistic Concurrency Control (OCC)</strong>
+                <p style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                  No row locking during read. Uses atomic compare-and-swap on version/quantity. Retries on conflict.
+                </p>
+              </div>
+            </label>
+
+            <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(244, 63, 94, 0.3);">
+              <input type="radio" name="sim-mode" value="uncontrolled" style="margin-top: 0.2rem;">
+              <div>
+                <strong style="color: var(--accent-rose); font-size: 0.88rem;">Uncontrolled Execution (Race Condition Demo)</strong>
+                <p style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                  Simulates spreadsheets/naive apps with no locks. Demonstrates Lost Updates, Race Conditions, and Overselling.
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" id="run-sim-btn" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1.5rem;">
+          <span>⚡ Execute Concurrency Benchmark</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Right Live Execution Console & Results -->
+    <div>
+      <!-- Live Terminal Log -->
+      <div class="terminal-card">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+          </div>
+          <span style="font-size: 0.72rem; color: #94a3b8;">THREAD CONCURRENCY TELEMETRY STREAM</span>
+        </div>
+        <div id="sim-terminal-output" class="terminal-body">
+          <div class="terminal-line log-time">> Ready for concurrency execution.</div>
+          <div class="terminal-line log-time">> Configure parameters on the left and click 'Execute Concurrency Benchmark'.</div>
+        </div>
+      </div>
+
+      <!-- Result Summary Card -->
+      <div id="sim-summary-box" class="glass-card" style="display: none; margin-top: 1.25rem;">
+        <div class="card-header">
+          <h2><span>📊</span> Benchmark Verification Summary</h2>
+          <span id="res-anomaly" class="status-badge healthy">✓ ZERO OVERSELLING</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Active Protocol</span>
+            <h4 id="res-mode" style="font-size: 1.1rem; color: var(--accent-cyan); font-weight: 700;">-</h4>
+          </div>
+          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Successful Orders</span>
+            <h4 id="res-sales" style="font-size: 1.1rem; color: var(--accent-emerald); font-weight: 700;">-</h4>
+          </div>
+          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Initial Stock Baseline</span>
+            <h4 id="res-initial" style="font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">-</h4>
+          </div>
+          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Final Verified Stock</span>
+            <h4 id="res-final" style="font-size: 1.1rem; color: var(--text-primary); font-weight: 700;">-</h4>
+          </div>
+        </div>
+
+        <div style="font-size: 0.82rem; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); padding-top: 0.75rem;">
+          <strong>Transactional Integrity Conclusion:</strong>
+          Lock-based 2-Phase Locking guarantees that non-serializable interleavings and overselling anomalies are completely prevented at the database engine level.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/concurrency_lab.js') }}"></script>
+{% endblock %}
